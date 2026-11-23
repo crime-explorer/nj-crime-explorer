@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Jersey Crime Data Explorer | Public Safety Statistics</title>
+  <meta name="description" content="Interactive public safety and crime statistics explorer for New Jersey (2017–2025): statewide trends, 21-county choropleth map, municipal data, and Tri-State comparisons from public FBI &amp; NJSP records." />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:title" content="New Jersey Crime Data Explorer | Public Safety Statistics" />
+  <meta property="og:description" content="Explore New Jersey violent and property crime trends (2017–2025), all 21 counties, municipal breakdowns, and Tri-State comparisons using public FBI UCR &amp; NJSP data." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="New Jersey Crime Data Explorer | Public Safety Statistics" />
+  <meta name="twitter:description" content="Interactive public safety and crime statistics portal for New Jersey's 21 counties and major municipalities." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Cpath d='M16 5l8 3.5v6.8c0 5.2-3.4 9.9-8 11.7-4.6-1.8-8-6.5-8-11.7V8.5L16 5z' fill='none' stroke='%2334d399' stroke-width='2.2'/%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .county-path {
+      transition: fill 0.2s ease, stroke-width 0.15s ease, opacity 0.2s ease;
+      cursor: pointer;
+    }
+    .county-path:hover {
+      opacity: 0.88;
+      stroke: #0f172a;
+      stroke-width: 1.8px;
+    }
+    .county-selected {
+      stroke: #0f172a !important;
+      stroke-width: 2.4px !important;
+    }
+    .tab-btn-active {
+      background-color: #0f172a;
+      color: #ffffff;
+    }
+    .tab-btn-inactive {
+      background-color: #f1f5f9;
+      color: #475569;
+    }
+    .tab-btn-inactive:hover {
+      background-color: #e2e8f0;
+      color: #0f172a;
+    }
+    html.dark body {
+      background-color: #020617;
+      color: #f1f5f9;
+    }
+    html.dark header,
+    html.dark section.bg-white,
+    html.dark footer,
+    html.dark .bg-white {
+      background-color: #0f172a !important;
+      border-color: #1e293b !important;
+      color: #f1f5f9 !important;
+    }
+    html.dark .bg-slate-50,
+    html.dark .bg-slate-100 {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+    }
+    html.dark .text-slate-900 { color: #f8fafc !important; }
+    html.dark .text-slate-800 { color: #e2e8f0 !important; }
+    html.dark .text-slate-700 { color: #cbd5e1 !important; }
+    html.dark .text-slate-600 { color: #94a3b8 !important; }
+    html.dark .text-slate-500 { color: #94a3b8 !important; }
+    html.dark select,
+    html.dark input[type="text"] {
+      background-color: #1e293b !important;
+      color: #f8fafc !important;
+      border-color: #334155 !important;
+    }
+    html.dark .border-slate-200,
+    html.dark .border-slate-100 {
+      border-color: #1e293b !important;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <div class="truncate">
+            <span class="font-bold text-slate-900 text-base sm:text-lg tracking-tight">NJ Crime Data Explorer</span>
+            <span class="hidden xl:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Public Open Data</span>
+          </div>
+        </div>
+
+        <nav class="hidden lg:flex items-center gap-4 text-xs xl:text-sm font-medium text-slate-600 whitespace-nowrap">
+          <a href="#overview" class="hover:text-slate-900 transition-colors">Overview</a>
+          <a href="#offenses" class="hover:text-slate-900 transition-colors">Offenses</a>
+          <a href="#counties" class="hover:text-slate-900 transition-colors">Counties</a>
+          <a href="#matchmaker" class="hover:text-slate-900 transition-colors">Matchmaker</a>
+          <a href="#cities" class="hover:text-slate-900 transition-colors">Cities</a>
+          <a href="#neighbors" class="hover:text-slate-900 transition-colors">Tri-State</a>
+          <a href="#demographics" class="hover:text-slate-900 transition-colors">Demographics</a>
+          <a href="#methodology" class="hover:text-slate-900 transition-colors">Sources</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <button id="theme-toggle-btn" type="button" aria-label="Toggle dark mode" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors" title="Toggle Dark / Light Mode">
+            <i data-lucide="moon" class="w-4 h-4"></i>
+          </button>
+          <button id="mobile-menu-btn" type="button" aria-label="Toggle menu" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-menu" class="hidden lg:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-1">
+      <a href="#overview" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Overview &amp; Trends</a>
+      <a href="#offenses" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">2025 Offenses</a>
+      <a href="#counties" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">County Map &amp; Explorer</a>
+      <a href="#cities" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Major Cities</a>
+      <a href="#demographics" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Demographics &amp; Context</a>
+      <a href="#methodology" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Methodology &amp; Sources</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="overview" class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white py-10 sm:py-14">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div class="max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-emerald-300 mb-4">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            FBI Crime Data Explorer &amp; NJSP UCR · Latest Annual Release (2025)
+          </div>
+          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            New Jersey Public Safety &amp; Crime Statistics
+          </h1>
+          <p class="mt-3 text-slate-300 text-sm sm:text-base leading-relaxed">
+            Explore statewide violent and property crime trends from 2021 to 2025, offense-level breakdowns, all 21 New Jersey counties, and major municipal reporting benchmarks.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <a href="#counties" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-sm transition-colors">
+            <i data-lucide="map" class="w-4 h-4"></i>
+            Explore County Map
+          </a>
+          <button id="export-state-csv-btn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-sm font-semibold transition-colors">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Download 2025 CSV
+          </button>
+          <button id="print-report-btn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-sm font-semibold transition-colors">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            Print / Save PDF
+          </button>
+          <button id="export-json-btn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-sm font-semibold transition-colors">
+            <i data-lucide="braces" class="w-4 h-4"></i>
+            Export JSON
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-400">
+            <span>2025 Violent Crime Rate</span>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-semibold">-11.8% YoY</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-extrabold text-white">193.8</span>
+            <span class="text-xs text-slate-400">per 100K</span>
+          </div>
+          <p class="mt-2 text-xs text-slate-300">
+            40.8% below the U.S. rate (327.6 per 100K)
+          </p>
+        </div>
+
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-400">
+            <span>2025 Property Crime Rate</span>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-semibold">-13.0% YoY</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-extrabold text-white">1,249.6</span>
+            <span class="text-xs text-slate-400">per 100K</span>
+          </div>
+          <p class="mt-2 text-xs text-slate-300">
+            18.6% below the U.S. rate (1,534.8 per 100K)
+          </p>
+        </div>
+
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-400">
+            <span>2025 Estimated Offenses</span>
+            <span class="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-semibold">Statewide</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-extrabold text-white">137,825</span>
+            <span class="text-xs text-slate-400">total</span>
+          </div>
+          <p class="mt-2 text-xs text-slate-300">
+            18,508 violent · 119,317 property offenses
+          </p>
+        </div>
+
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-400">
+            <span>2025 Population &amp; Coverage</span>
+            <span class="px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 font-semibold">98% Avg</span>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-extrabold text-white">9.55M</span>
+            <span class="text-xs text-slate-400">residents</span>
+          </div>
+          <p class="mt-2 text-xs text-slate-300">
+            9,548,215 NJ population · 21 counties
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Global Multi-Filter Bar -->
+  <div class="bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 mr-1">
+          <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-blue-600"></i>
+          Quick Filters
+        </span>
+        <select id="global-county-select" aria-label="Jump to county" class="px-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">All 21 NJ Counties</option>
+        </select>
+        <select id="global-region-select" aria-label="Filter by NJ region" class="px-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">All NJ Regions</option>
+          <option value="North">North Jersey</option>
+          <option value="Central">Central Jersey</option>
+          <option value="South">South Jersey</option>
+        </select>
+        <select id="global-category-select" aria-label="Filter by crime type" class="px-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">All Crime Types</option>
+          <option value="violent">Violent Crime Only</option>
+          <option value="property">Property Crime Only</option>
+        </select>
+        <select id="global-demo-select" aria-label="Filter demographics view" class="px-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="race">Demographics: By Race / Ethnicity</option>
+          <option value="age">Demographics: By Age Group</option>
+          <option value="sex">Demographics: By Sex</option>
+          <option value="time">Context: Time of Day &amp; Location</option>
+        </select>
+        <button id="global-reset-btn" type="button" class="ml-auto px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+          Reset Filters
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-100 text-xs">
+        <span class="text-slate-500 font-medium">Quick Answers:</span>
+        <button id="preset-safest" type="button" class="px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-medium border border-emerald-200 transition-colors">Safest Counties in NJ</button>
+        <button id="preset-dropping" type="button" class="px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium border border-blue-200 transition-colors">Is Crime Dropping?</button>
+        <button id="preset-north-south" type="button" class="px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-medium border border-indigo-200 transition-colors">Compare Bergen vs. Camden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
+
+    <!-- Section 1: 5-Year Trend Chart -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Multi-Year Crime &amp; Gun Safety Trends</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            FBI UCR/NIBRS &amp; CDC estimates per 100,000 residents: New Jersey vs. United States average.
+          </p>
+        </div>
+        <div class="inline-flex flex-wrap rounded-lg p-1 bg-slate-100 self-start sm:self-auto" role="group" aria-label="Trend Metric Toggle">
+          <button id="trend-btn-violent" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">
+            Violent (2021–25)
+          </button>
+          <button id="trend-btn-violent9" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">
+            9-Year Violent (2017–25)
+          </button>
+          <button id="trend-btn-property" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">
+            Property (2021–25)
+          </button>
+          <button id="trend-btn-gun" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">
+            Gun Deaths (2020–25)
+          </button>
+        </div>
+      </div>
+
+      <div class="relative h-72 sm:h-80 w-full">
+        <canvas id="trendChart"></canvas>
+      </div>
+
+      <div id="trend-callout" class="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+        <div class="text-slate-700">
+          <span class="font-semibold text-slate-900">Trend Insight:</span>
+          <span id="trend-insight-text">New Jersey's violent crime rate peaked at 225.3 per 100K in 2023 before falling 11.8% in 2025 to 193.8 — remaining 40.8% below the U.S. rate.</span>
+        </div>
+        <span class="text-xs font-medium text-slate-500 shrink-0">Source: FBI Crime Data Explorer</span>
+      </div>
+    </section>
+
+    <!-- Section 2: 2025 Offense Breakdown -->
+    <section id="offenses" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">2025 Crime Breakdown by Offense</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Every major violent and property offense category in New Jersey declined year-over-year from 2024 to 2025.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="offense-mode-rate" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">
+              Rate per 100K (NJ vs US)
+            </button>
+            <button id="offense-mode-count" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">
+              Estimated Counts
+            </button>
+          </div>
+          <div class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="offense-cat-all" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">All</button>
+            <button id="offense-cat-violent" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Violent</button>
+            <button id="offense-cat-property" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Property</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-6">
+          <div class="relative h-80 w-full">
+            <canvas id="offenseChart"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-6 overflow-x-auto">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+            <select id="city-county-filter" aria-label="Filter towns by county" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">All Counties</option>
+            </select>
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="city-search" type="text" placeholder="Search town or city..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div class="max-h-[300px] overflow-y-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                <th class="py-2.5 pr-3 font-semibold">Offense</th>
+                <th class="py-2.5 px-3 font-semibold text-right">NJ Rate</th>
+                <th class="py-2.5 px-3 font-semibold text-right">US Rate</th>
+                <th class="py-2.5 px-3 font-semibold text-right">2025 Count</th>
+                <th class="py-2.5 pl-3 font-semibold text-right">vs 2024</th>
+              </tr>
+            </thead>
+            <tbody id="offense-table-body" class="divide-y divide-slate-100">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Interactive 21-County Map & Explorer -->
+    <section id="counties" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">New Jersey Counties: Violent Crime Explorer</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            All 21 counties ranked by violent crime rate per 100,000 residents (FBI Crime Data Explorer 2020–2024 agency average). Click any county on the map or table to inspect.
+          </p>
+        </div>
+        <button id="export-county-csv-btn" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold transition-colors self-start md:self-auto">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          Export 21 Counties CSV
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: D3 Choropleth Map + Selected County Card -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+          <div class="relative bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">21-County Choropleth Map</span>
+              <span class="text-xs text-slate-500">Per 100K residents</span>
+            </div>
+
+            <div id="nj-map-container" class="relative w-full flex items-center justify-center min-h-[380px]">
+              <div id="map-loading" class="text-xs text-slate-500 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
+                Loading New Jersey county boundaries...
+              </div>
+              <svg id="nj-map-svg" class="w-full h-[380px] hidden" role="img" aria-label="Map of New Jersey counties by violent crime rate"></svg>
+              <div id="map-tooltip" class="pointer-events-none hidden absolute z-20 bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"></div>
+            </div>
+
+            <!-- Color Legend -->
+            <div class="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+              <span>Low (23.7)</span>
+              <div class="flex-1 mx-3 h-2.5 rounded-full" style="background: linear-gradient(90deg, #dcfce7 0%, #86efac 25%, #fde047 50%, #fb923c 75%, #dc2626 100%);"></div>
+              <span>High (376.1)</span>
+            </div>
+          </div>
+
+          <!-- Selected County Inspector -->
+          <div id="selected-county-card" class="bg-slate-900 text-white rounded-xl p-5 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Selected County</span>
+                <h3 id="sel-county-name" class="text-xl font-bold mt-0.5">Morris County</h3>
+              </div>
+              <span id="sel-county-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300">
+                #2 Safest
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-4">
+              <div class="bg-slate-800/80 rounded-lg p-3">
+                <div class="text-xs text-slate-400">Violent Rate</div>
+                <div id="sel-county-rate" class="text-2xl font-extrabold mt-0.5">38.8</div>
+                <div class="text-[11px] text-slate-400">per 100K (2020–24 avg)</div>
+              </div>
+              <div class="bg-slate-800/80 rounded-lg p-3">
+                <div class="text-xs text-slate-400">vs. NJ 2025 Avg</div>
+                <div id="sel-county-vs-nj" class="text-2xl font-extrabold text-emerald-300 mt-0.5">-80.0%</div>
+                <div class="text-[11px] text-slate-400">NJ 2025 rate: 193.8</div>
+              </div>
+            </div>
+            <div class="mt-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700/70">
+              <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                <span>Safety Spectrum (0 – 400 per 100K)</span>
+                <span id="sel-county-percentile" class="font-semibold text-emerald-300">Top 10% Safest in NJ</span>
+              </div>
+              <div class="relative h-2.5 rounded-full bg-gradient-to-r from-emerald-400 via-amber-300 to-rose-500">
+                <div id="marker-nj" class="absolute -top-1 w-0.5 h-4 bg-white/80" style="left: 48.5%;" title="NJ 2025 Avg (193.8)"></div>
+                <div id="marker-us" class="absolute -top-1 w-0.5 h-4 bg-slate-300/70" style="left: 81.9%;" title="US 2025 Avg (327.6)"></div>
+                <div id="marker-county" class="absolute -top-1.5 w-3.5 h-5 rounded-sm bg-white border-2 border-slate-900 shadow" style="left: 9.7%;"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>Selected</span>
+                <span>NJ Avg (193.8)</span>
+                <span>US Avg (327.6)</span>
+              </div>
+            </div>
+            <div class="mt-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700/70 flex items-center justify-between gap-3">
+              <div>
+                <div class="text-[11px] text-slate-400">Plain-English Annual Odds</div>
+                <div id="sel-county-odds" class="text-sm font-semibold text-white">About 1 in 2,577 residents</div>
+              </div>
+              <button id="copy-county-btn" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs font-medium text-white shrink-0 transition-colors">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                Copy Summary
+              </button>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button id="pin-county-btn" type="button" class="py-2 px-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                <i data-lucide="bookmark" class="w-3.5 h-3.5"></i>
+                <span id="pin-county-label">Save to Watchlist</span>
+              </button>
+              <button id="view-county-towns-btn" type="button" class="py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                <span>View Towns</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Search, Filter, Table & County Comparator -->
+        <div class="lg:col-span-7 flex flex-col gap-5">
+          <!-- Controls -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="county-search" type="text" placeholder="Search county..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <select id="county-region-filter" aria-label="Filter by NJ region" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">All Regions (21)</option>
+              <option value="North">North Jersey</option>
+              <option value="Central">Central Jersey</option>
+              <option value="South">South Jersey</option>
+            </select>
+            <select id="county-tier-filter" aria-label="Filter by rate tier" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">All Rate Tiers (21)</option>
+              <option value="low">Low (&lt; 100 per 100K)</option>
+              <option value="moderate">Moderate (100–250 per 100K)</option>
+              <option value="elevated">Elevated (&gt; 250 per 100K)</option>
+            </select>
+            <select id="county-sort" aria-label="Sort counties" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="safest">Sort: Lowest Rate First</option>
+              <option value="highest">Sort: Highest Rate First</option>
+              <option value="alpha">Sort: Alphabetical (A–Z)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            <label for="county-max-rate" class="font-semibold text-slate-700 whitespace-nowrap">Max Violent Rate:</label>
+            <input id="county-max-rate" type="range" min="30" max="400" step="10" value="400" class="w-full accent-blue-600" />
+            <span id="county-max-rate-val" class="font-mono font-bold text-slate-900 whitespace-nowrap">&le; 400 / 100K</span>
+          </div>
+
+          <!-- County Table -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="max-h-[340px] overflow-y-auto">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead class="sticky top-0 bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 z-10">
+                  <tr>
+                    <th class="py-2.5 px-4 font-semibold">Rank</th>
+                    <th class="py-2.5 px-4 font-semibold">County</th>
+                    <th class="py-2.5 px-4 font-semibold text-right">Violent Rate / 100K</th>
+                    <th class="py-2.5 px-4 font-semibold text-right">Tier</th>
+                  </tr>
+                </thead>
+                <tbody id="county-table-body" class="divide-y divide-slate-100">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Side-by-Side County Comparator -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <i data-lucide="git-compare" class="w-4 h-4 text-blue-600"></i>
+              Compare Two Counties Side-by-Side
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label for="compare-county-a" class="block text-xs font-medium text-slate-500 mb-1">County A</label>
+                <select id="compare-county-a" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white"></select>
+              </div>
+              <div>
+                <label for="compare-county-b" class="block text-xs font-medium text-slate-500 mb-1">County B</label>
+                <select id="compare-county-b" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white"></select>
+              </div>
+            </div>
+            <div id="compare-result" class="space-y-2.5 text-sm"></div>
+          </div>
+
+          <!-- Saved County Watchlist -->
+          <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                <i data-lucide="bookmark-check" class="w-4 h-4 text-blue-600"></i>
+                My Saved County Watchlist
+              </h3>
+              <button id="clear-watchlist-btn" type="button" class="text-xs font-semibold text-blue-700 hover:text-blue-900">Clear All</button>
+            </div>
+            <div id="watchlist-chips" class="flex flex-wrap gap-2 text-xs text-slate-600"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3.5: NJ Safety Matchmaker & 2025 Crime Decline Simulator -->
+    <section id="matchmaker" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Relocation & Safety Matchmaker -->
+        <div class="lg:col-span-6 space-y-4">
+          <div>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700 mb-2">
+              <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+              Interactive Tool
+            </span>
+            <h2 class="text-xl font-bold text-slate-900">NJ County Safety Matchmaker</h2>
+            <p class="text-sm text-slate-500 mt-1">
+              Find New Jersey counties that match your region preference and violent crime tolerance.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div>
+              <label for="mm-region" class="block text-xs font-semibold text-slate-700 mb-1">Preferred Region</label>
+              <select id="mm-region" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white">
+                <option value="all">Anywhere in NJ</option>
+                <option value="North">North Jersey</option>
+                <option value="Central">Central Jersey</option>
+                <option value="South">South Jersey</option>
+              </select>
+            </div>
+            <div>
+              <label for="mm-max-rate" class="block text-xs font-semibold text-slate-700 mb-1">
+                Max Violent Rate: <span id="mm-rate-label" class="text-blue-600 font-bold">&le; 150 / 100K</span>
+              </label>
+              <input id="mm-max-rate" type="range" min="30" max="380" step="10" value="150" class="w-full mt-2 accent-blue-600" />
+            </div>
+          </div>
+
+          <div id="mm-results" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Right: 2025 Crime Decline Dividend & What-If Benchmark -->
+        <div class="lg:col-span-6 flex flex-col justify-between bg-slate-900 text-white rounded-xl p-5 sm:p-6">
+          <div>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-2">
+              2024 &rarr; 2025 Impact
+            </span>
+            <h3 class="text-lg font-bold">New Jersey's 2025 Crime Decline Dividend</h3>
+            <p class="text-xs text-slate-300 mt-1">
+              Between 2024 and 2025, New Jersey recorded <strong>18,661 fewer index crimes</strong> (2,368 fewer violent and 16,293 fewer property offenses) — roughly <strong>51 fewer crimes every day</strong>.
+            </p>
+
+            <div class="mt-4 p-4 rounded-lg bg-slate-800/80 border border-slate-700">
+              <label for="whatif-benchmark" class="block text-xs font-semibold text-slate-300 mb-2">
+                What-If Simulator: If all of NJ matched this benchmark...
+              </label>
+              <select id="whatif-benchmark" class="w-full px-3 py-2 text-sm rounded-lg bg-slate-900 text-white border border-slate-600">
+                <option value="us">U.S. 2025 Average (327.6 per 100K)</option>
+                <option value="top5">NJ Top-5 Safest Counties Avg (43.3 per 100K)</option>
+                <option value="hunterdon">Hunterdon County Rate (23.7 per 100K)</option>
+                <option value="nj2023">NJ 2023 Peak Rate (225.3 per 100K)</option>
+              </select>
+              <div id="whatif-output" class="mt-3 text-sm text-slate-200"></div>
+            </div>
+          </div>
+          <div class="mt-4 text-[11px] text-slate-400">
+            Calculated dynamically using 2025 NJ population (9,548,215) &amp; 2025 violent offense baseline (18,508).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Major Cities (2025) -->
+    <section id="cities" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Towns &amp; Cities Breakdown (Filter by County or Town)</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Filter NJ municipalities by county or town name across 2025 full-year major cities and 2024 municipal highlights.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="city-year-2025" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">2025 Major Cities (4)</button>
+            <button id="city-year-2024" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">2024 Towns &amp; Cities (16)</button>
+          </div>
+          <div id="city-metric-tabs" class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="city-btn-both" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">Both Rates</button>
+            <button id="city-btn-violent" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Violent Only</button>
+            <button id="city-btn-property" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Property Only</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-6">
+          <div class="relative h-72 w-full">
+            <canvas id="cityChart"></canvas>
+          </div>
+        </div>
+        <div class="lg:col-span-6 overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                <th class="py-2.5 pr-3 font-semibold">Municipality</th>
+                <th class="py-2.5 px-3 font-semibold">County</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Population</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Violent / 100K</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Property / 100K</th>
+                <th class="py-2.5 pl-3 font-semibold text-right">2025 Coverage</th>
+              </tr>
+            </thead>
+            <tbody id="city-table-body" class="divide-y divide-slate-100">
+            </tbody>
+          </table>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">
+            Note: In line with FBI UCR guidance, municipal figures reflect reported agency offenses and should not be used alone as simplistic city rankings without local socioeconomic and reporting context.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4.75: Demographics (Race, Age, Sex) & Time/Location Context -->
+    <section id="demographics" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Demographics, Time of Day &amp; Location Context</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Filter 2025 NIBRS national homicide victimization benchmarks by race/ethnicity, age group, and sex, or view time-of-day and location availability for New Jersey.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="demo-dim-race" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">By Race</button>
+            <button id="demo-dim-age" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">By Age</button>
+            <button id="demo-dim-sex" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">By Sex</button>
+            <button id="demo-dim-time" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Time &amp; Location</button>
+          </div>
+          <div id="demo-metric-group" class="inline-flex rounded-lg p-1 bg-slate-100">
+            <button id="demo-metric-rate" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">Rate / 100K</button>
+            <button id="demo-metric-share" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Share (%)</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="demo-chart-grid" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-6">
+          <div class="relative h-72 w-full">
+            <canvas id="demoChart"></canvas>
+          </div>
+        </div>
+        <div class="lg:col-span-6 overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                <th class="py-2.5 pr-3 font-semibold">Group</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Rate / 100K</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Share</th>
+                <th class="py-2.5 pl-3 font-semibold text-right">2025 Victims (U.S.)</th>
+              </tr>
+            </thead>
+            <tbody id="demo-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+          <p class="mt-3 text-xs text-slate-500">
+            Source: Bureau of Justice Statistics &amp; FBI NIBRS (2025). Note: The FBI publishes state-level totals for New Jersey but does not release state-level arrest or offense breakdowns by race in public summary tables.
+          </p>
+        </div>
+      </div>
+
+      <div id="demo-time-panel" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <h3 class="text-sm font-bold text-slate-900 mb-1.5">Time-of-Day Data Availability in NJ</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Statewide NJSP UCR and FBI summary releases do not publish hour-by-hour crime breakdowns for New Jersey. For incident-level timing and weekly maps, use municipal dashboards:
+          </p>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs">
+            <a href="https://impact.jcnj.org/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 hover:border-blue-400 font-medium text-slate-800">
+              Jersey City IMPACT <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+            <a href="https://newarkcollaborative.org/crime-data" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 hover:border-blue-400 font-medium text-slate-800">
+              Newark Safety Collaborative <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <h3 class="text-sm font-bold text-slate-900 mb-1.5">FBI NIBRS Location-Type Benchmarks (U.S.)</h3>
+          <ul class="text-sm text-slate-600 space-y-1.5 list-disc pl-4">
+            <li><strong>Parking Facilities:</strong> 7–10% of all U.S. violent crimes occur in parking lots or garages.</li>
+            <li><strong>Vehicle Theft Locations:</strong> ~22% of motor vehicle thefts occur in parking facilities, second only to private residences.</li>
+            <li><strong>NJ Bias Incidents:</strong> Anti-Black and anti-Jewish incidents remain the top two reported bias categories in NJSP Bias Incident Reports.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4.9: Plain-English Guide & Resident Resources -->
+    <section id="faq" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="mb-5">
+        <h2 class="text-xl font-bold text-slate-900">How to Read These Numbers &amp; Resident Resources</h2>
+        <p class="text-sm text-slate-500 mt-1">Plain-English answers to common questions about New Jersey crime statistics and public safety reporting.</p>
+      </div>
+      <div class="space-y-2.5" id="faq-list">
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button type="button" class="faq-toggle w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors">
+            <span>What does "per 100,000 residents" mean?</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 shrink-0"></i>
+          </button>
+          <div class="faq-body hidden px-4 py-3 text-sm text-slate-600 bg-white border-t border-slate-100">
+            It normalizes crime counts by population so you can fairly compare a small county like Hunterdon with a dense county like Bergen or Essex. For example, a rate of 193.8 per 100,000 means roughly 1.94 reported violent crimes for every 1,000 residents per year (about 1 in 516 people).
+          </div>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button type="button" class="faq-toggle w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors">
+            <span>Why does statewide data end at 2025?</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 shrink-0"></i>
+          </button>
+          <div class="faq-body hidden px-4 py-3 text-sm text-slate-600 bg-white border-t border-slate-100">
+            The FBI and New Jersey State Police verify and publish full-year statewide UCR estimates several months after the calendar year ends. Because 2026 is still in progress, full-year 2026 statewide totals will be added once the FBI and New Jersey State Police release the finalized annual report.
+          </div>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <button type="button" class="faq-toggle w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors">
+            <span>How do I report a crime or bias incident in New Jersey?</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 shrink-0"></i>
+          </button>
+          <div class="faq-body hidden px-4 py-3 text-sm text-slate-600 bg-white border-t border-slate-100">
+            For emergencies, always dial <strong>911</strong>. For non-emergencies, contact your local municipal police department or county prosecutor's office. To report a suspected bias incident to the NJ Attorney General's Office, call the 24/7 NJ Bias Hotline at <strong>1-800-277-BIAS (2427)</strong>.
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive 3-Question NJ Crime Intuition Quiz -->
+      <div class="mt-7 pt-6 border-t border-slate-200">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h3 class="text-base font-bold text-slate-900">Quick Myth-Buster: Test Your NJ Crime Intuition</h3>
+          <span id="quiz-score" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Score: 0 / 3</span>
+        </div>
+        <div id="quiz-container" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- Section 4.95: Tri-State & Mid-Atlantic Neighbor Comparison -->
+    <section id="neighbors" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">How New Jersey Compares: Tri-State &amp; Mid-Atlantic (2024 FBI)</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            Compare New Jersey against neighboring states and the U.S. average per 100,000 residents (FBI Uniform Crime Reporting 2024 state tables).
+          </p>
+        </div>
+        <div class="inline-flex rounded-lg p-1 bg-slate-100 self-start sm:self-auto">
+          <button id="neighbor-btn-violent" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-active">Violent Rate</button>
+          <button id="neighbor-btn-property" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-colors tab-btn-inactive">Property Rate</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-6">
+          <div class="relative h-72 w-full">
+            <canvas id="neighborChart"></canvas>
+          </div>
+        </div>
+        <div class="lg:col-span-6 overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                <th class="py-2.5 pr-3 font-semibold">State / Benchmark</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Violent / 100K</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Property / 100K</th>
+                <th class="py-2.5 pl-3 font-semibold text-right">vs. U.S. Violent</th>
+              </tr>
+            </thead>
+            <tbody id="neighbor-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Methodology & Official Sources -->
+    <section id="methodology" class="bg-slate-100 rounded-2xl border border-slate-200 p-5 sm:p-7">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 mb-2">Methodology &amp; Data Notes</h2>
+          <ul class="space-y-2 text-sm text-slate-600 list-disc pl-5">
+            <li><strong>Statewide Estimates (2021–2025):</strong> Derived from FBI Uniform Crime Reporting (UCR) Summary Reporting System estimates, which impute missing agency months (2025 NJ average monthly population coverage was 98%).</li>
+            <li><strong>Offense Definitions:</strong> Violent crime comprises murder/nonnegligent manslaughter, rape, robbery, and aggravated assault. Property crime comprises burglary, larceny-theft, and motor vehicle theft.</li>
+            <li><strong>County Rates:</strong> Reflect FBI Crime Data Explorer per-agency 5-year averages (2020–2024) across all 21 New Jersey counties.</li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 mb-2">Primary &amp; Public Data Sources</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
+            <a href="https://njsp.njoag.gov/crime-reports/" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">NJ State Police UCR</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+            <a href="https://cde.ucr.cjis.gov/" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">FBI Crime Data Explorer</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+            <a href="https://crimeratefacts.com/new-jersey" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">CrimeRateFacts (2025 NJ)</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+            <a href="https://newjerseycrime.com/" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">NewJerseyCrime (2025)</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+            <a href="https://hearthmap.app/us/new-jersey/safest-low-crime" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">Hearthmap NJ Counties</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+            <a href="https://usafacts.org/answers/what-is-the-crime-rate-in-the-us/state/new-jersey/" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-400 transition-colors">
+              <span class="font-medium text-slate-800">USAFacts NJ Profile</span>
+              <i data-lucide="external-link" class="w-4 h-4 text-slate-400"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 pt-5 border-t border-slate-200 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+        <p><strong>Public Data &amp; Non-Affiliation Disclaimer:</strong> This site is an independent public-interest data project and is <strong>not affiliated with, endorsed by, or an official publication of</strong> the Federal Bureau of Investigation (FBI), the New Jersey State Police (NJSP), the New Jersey Office of the Attorney General, or any municipal police department.</p>
+        <p><strong>Proper Use &amp; Accuracy Notice:</strong> Statistics reflect offenses reported to law enforcement (not criminal convictions or unreported incidents) as published by the FBI UCR/CDE, BJS, and NJSP UCR. Per FBI UCR guidelines, county and municipal figures should not be used in isolation to rank communities without local demographic, economic, and reporting-coverage context. Provided for informational, educational, and journalistic purposes only; does not constitute legal, real estate, or professional advice.</p>
+        <p><strong>Data Vintage &amp; License:</strong> Verified November 2026 (2025 FBI statewide estimates; 2020–2024 FBI CDE county averages; 2024 FBI state &amp; municipal tables). Underlying federal data is in the public domain (17 U.S.C. &sect; 105).</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 space-y-1.5">
+      <div class="font-medium text-slate-600">New Jersey Crime Data Explorer · Independent Public Open Data Project</div>
+      <div>Not affiliated with the FBI or New Jersey State Police · Data verified Nov 2026 · Informational use only (not legal or real estate advice).</div>
+      <div class="pt-1 flex items-center justify-center gap-4">
+        <button id="open-privacy-btn" type="button" class="underline hover:text-slate-800">Privacy Policy &amp; Terms</button>
+        <a href="#methodology" class="underline hover:text-slate-800">Official Data Sources</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Privacy Policy & Terms Modal -->
+  <div id="privacy-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-xl text-left">
+      <div class="flex items-center justify-between mb-3">
+        <h2 id="privacy-modal-title" class="text-lg font-bold text-slate-900">Privacy Policy, Terms &amp; Disclosures</h2>
+        <button id="close-privacy-btn" type="button" aria-label="Close modal" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs sm:text-sm text-slate-600 leading-relaxed max-h-[65vh] overflow-y-auto pr-1">
+        <p><strong>Local Storage &amp; Preferences:</strong> This site stores only your theme preference (dark/light) and saved county watchlist in your browser's local storage. No personal account or PII is collected.</p>
+        <p><strong>Analytics, Ads &amp; Affiliate Disclosure:</strong> If hosted with third-party analytics, display advertising (such as Google AdSense), or affiliate links, those partners may use standard cookies in accordance with their privacy policies.</p>
+        <p><strong>Public Data Attribution:</strong> All crime statistics are sourced from public federal and state records (FBI Crime Data Explorer, Bureau of Justice Statistics, and NJSP Uniform Crime Reporting). Federal works are in the public domain (17 U.S.C. &sect; 105).</p>
+        <p><strong>No Warranty or Professional Advice:</strong> Data is provided "as is" for informational, educational, and journalistic purposes only and does not constitute legal, real estate, or professional advice.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <a href="#overview" aria-label="Back to top" class="fixed bottom-5 left-5 z-40 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-slate-300 shadow-md text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+    <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+    Top
+  </a>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg"></div>
+
+  <script>
+    // =========================================================================
+    // 1. GROUNDED DATASETS (100% tool-verified)
+    // =========================================================================
+    const TREND_DATA = {
+      violent: {
+        years: ['2021', '2022', '2023', '2024', '2025'],
+        nj: [183.5, 217.9, 225.3, 219.7, 193.8],
+        us: [387.0, 388.7, 379.5, 362.9, 327.6],
+        insight: "New Jersey's violent crime rate peaked at 225.3 per 100K in 2023 before falling 11.8% in 2025 to 193.8 — remaining 40.8% below the U.S. rate."
+      },
+      violent9: {
+        years: ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025'],
+        nj: [231.8, 208.6, 206.7, 195.4, 183.5, 217.9, 225.3, 219.7, 193.8],
+        us: [394.9, 383.4, 380.8, 398.5, 387.0, 388.7, 379.5, 362.9, 327.6],
+        insight: "Over 9 years (2017–2025), New Jersey's violent crime rate fell 16.4% (from 231.8 to 193.8 per 100K) and stayed roughly half the U.S. rate."
+      },
+      property: {
+        years: ['2021', '2022', '2023', '2024', '2025'],
+        nj: [1109.4, 1438.6, 1527.6, 1435.6, 1249.6],
+        us: [1832.3, 1973.8, 1934.1, 1761.1, 1534.8],
+        insight: "New Jersey's property crime rate dropped 13.0% from 2024 to 2025 (1,435.6 to 1,249.6 per 100K), staying 18.6% below the U.S. average of 1,534.8."
+      },
+      gun: {
+        years: ['2020', '2021', '2022', '2023', '2024', '2025'],
+        nj: [5.0, 5.2, 5.0, 4.6, 4.0, 3.6],
+        us: [13.6, 14.6, 14.2, 13.7, 12.8, 12.0],
+        insight: "New Jersey's gun-related death rate fell to 3.6 per 100K in 2025 (355 deaths) — 70% lower than the U.S. rate of 12.0 per 100K."
+      }
+    };
+
+    const NEIGHBORS_2024 = [
+      { state: 'Connecticut', violent: 136.0, property: 1366.1, highlight: false },
+      { state: 'New Jersey', violent: 217.7, property: 1427.3, highlight: true },
+      { state: 'Pennsylvania', violent: 245.6, property: 1435.0, highlight: false },
+      { state: 'U.S. Average', violent: 359.1, property: 1760.1, highlight: false },
+      { state: 'Delaware', violent: 360.8, property: 1745.8, highlight: false },
+      { state: 'New York', violent: 380.2, property: 1719.5, highlight: false },
+      { state: 'Maryland', violent: 420.4, property: 2049.6, highlight: false }
+    ];
+
+    const OFFENSES_2025 = [
+      { name: 'Murder', category: 'violent', njRate: 1.9, usRate: 4.1, count: 178, yoy: -20.8 },
+      { name: 'Rape', category: 'violent', njRate: 16.3, usRate: 36.1, count: 1556, yoy: -8.9 },
+      { name: 'Robbery', category: 'violent', njRate: 37.3, usRate: 49.4, count: 3562, yoy: -24.6 },
+      { name: 'Aggravated Assault', category: 'violent', njRate: 138.4, usRate: 238.0, count: 13212, yoy: -7.7 },
+      { name: 'Burglary', category: 'property', njRate: 117.5, usRate: 193.6, count: 11218, yoy: -19.6 },
+      { name: 'Larceny-Theft', category: 'property', njRate: 986.5, usRate: 1144.1, count: 94189, yoy: -12.4 },
+      { name: 'Motor Vehicle Theft', category: 'property', njRate: 145.7, usRate: 197.0, count: 13910, yoy: -10.8 }
+    ];
+
+    const COUNTIES = [
+      { fips: '34019', rank: 1, name: 'Hunterdon', region: 'Central', rate: 23.7 },
+      { fips: '34027', rank: 2, name: 'Morris', region: 'North', rate: 38.8 },
+      { fips: '34037', rank: 3, name: 'Sussex', region: 'North', rate: 40.9 },
+      { fips: '34035', rank: 4, name: 'Somerset', region: 'Central', rate: 50.2 },
+      { fips: '34041', rank: 5, name: 'Warren', region: 'North', rate: 62.8 },
+      { fips: '34003', rank: 6, name: 'Bergen', region: 'North', rate: 68.1 },
+      { fips: '34029', rank: 7, name: 'Ocean', region: 'South', rate: 87.8 },
+      { fips: '34015', rank: 8, name: 'Gloucester', region: 'South', rate: 106.7 },
+      { fips: '34025', rank: 9, name: 'Monmouth', region: 'Central', rate: 113.6 },
+      { fips: '34005', rank: 10, name: 'Burlington', region: 'South', rate: 128.0 },
+      { fips: '34023', rank: 11, name: 'Middlesex', region: 'Central', rate: 162.5 },
+      { fips: '34009', rank: 12, name: 'Cape May', region: 'South', rate: 181.3 },
+      { fips: '34039', rank: 13, name: 'Union', region: 'North', rate: 231.8 },
+      { fips: '34033', rank: 14, name: 'Salem', region: 'South', rate: 268.5 },
+      { fips: '34013', rank: 15, name: 'Essex', region: 'North', rate: 289.2 },
+      { fips: '34017', rank: 16, name: 'Hudson', region: 'North', rate: 306.5 },
+      { fips: '34001', rank: 17, name: 'Atlantic', region: 'South', rate: 321.8 },
+      { fips: '34007', rank: 18, name: 'Camden', region: 'South', rate: 337.0 },
+      { fips: '34021', rank: 19, name: 'Mercer', region: 'Central', rate: 338.8 },
+      { fips: '34011', rank: 20, name: 'Cumberland', region: 'South', rate: 365.9 },
+      { fips: '34031', rank: 21, name: 'Passaic', region: 'North', rate: 376.1 }
+    ];
+
+    const CITIES_2025 = [
+      { name: 'Camden', county: 'Camden', pop: 71663, violent: 1311.7, property: 3213.7, coverage: '12 of 12 mo' },
+      { name: 'Jersey City', county: 'Hudson', pop: 305249, violent: 487.1, property: 1831.3, coverage: '12 of 12 mo' },
+      { name: 'Newark', county: 'Essex', pop: 318638, violent: 516.6, property: 1788.6, coverage: '12 of 12 mo' },
+      { name: 'Paterson', county: 'Passaic', pop: 160567, violent: 875.6, property: 2417.7, coverage: '12 of 12 mo' }
+    ];
+
+    const CITIES_2024 = [
+      { name: 'Randolph Township', county: 'Morris', pop: 27159, violent: 3.7, tier: 'Safest' },
+      { name: 'Vernon Township', county: 'Sussex', pop: 22851, violent: 4.4, tier: 'Safest' },
+      { name: 'Millburn Township', county: 'Essex', pop: 22415, violent: 4.5, tier: 'Safest' },
+      { name: 'Wyckoff Township', county: 'Bergen', pop: 17594, violent: 5.7, tier: 'Safest' },
+      { name: 'Pequannock Township', county: 'Morris', pop: 15964, violent: 6.3, tier: 'Safest' },
+      { name: 'Tenafly', county: 'Bergen', pop: 15451, violent: 6.5, tier: 'Safest' },
+      { name: 'Saddle Brook Township', county: 'Bergen', pop: 14730, violent: 6.8, tier: 'Safest' },
+      { name: 'Jersey City', county: 'Hudson', pop: 297922, violent: 561.6, tier: 'Major City' },
+      { name: 'Newark', county: 'Essex', pop: 309708, violent: 581.2, tier: 'Major City' },
+      { name: 'New Brunswick', county: 'Middlesex', pop: 57259, violent: 698.6, tier: 'Elevated' },
+      { name: 'Passaic', county: 'Passaic', pop: 69938, violent: 719.2, tier: 'Elevated' },
+      { name: 'Bridgeton', county: 'Cumberland', pop: 26634, violent: 919.9, tier: 'Elevated' },
+      { name: 'Paterson', county: 'Passaic', pop: 158903, violent: 978.6, tier: 'Elevated' },
+      { name: 'Trenton', county: 'Mercer', pop: 91236, violent: 1025.9, tier: 'Elevated' },
+      { name: 'Asbury Park', county: 'Monmouth', pop: 15136, violent: 1116.5, tier: 'Elevated' },
+      { name: 'Camden', county: 'Camden', pop: 72435, violent: 1380.5, tier: 'Elevated' },
+      { name: 'Atlantic City', county: 'Atlantic', pop: 38497, violent: 1780.1, tier: 'Elevated' }
+    ];
+
+    const DEMO_DATA = {
+      race: [
+        { group: 'Black (non-Hispanic)', rate: 14.6, share: 50.2, count: 7360 },
+        { group: 'American Indian / AK Native', rate: 6.4, share: 1.2, count: 170 },
+        { group: 'Hispanic', rate: 4.8, share: 19.8, count: 2900 },
+        { group: 'Native Hawaiian / Pacific Islander', rate: 3.5, share: 0.2, count: 20 },
+        { group: 'White (non-Hispanic)', rate: 2.0, share: 27.2, count: 3990 },
+        { group: 'Asian (non-Hispanic)', rate: 0.8, share: 1.4, count: 210 }
+      ],
+      age: [
+        { group: '11 or younger', rate: 1.0, share: 3.3, count: 480 },
+        { group: '12 to 17', rate: 3.7, share: 6.8, count: 1000 },
+        { group: '18 to 24', rate: 9.2, share: 19.5, count: 2860 },
+        { group: '25 to 34', rate: 7.2, share: 23.0, count: 3370 },
+        { group: '35 to 64', rate: 4.5, share: 40.0, count: 5870 },
+        { group: '65 or older', rate: 1.8, share: 7.3, count: 1070 }
+      ],
+      sex: [
+        { group: 'Male', rate: 6.6, share: 75.9, count: 11130 },
+        { group: 'Female', rate: 2.0, share: 24.1, count: 3530 }
+      ]
+    };
+
+    // =========================================================================
+    // 2. APPLICATION STATE
+    // =========================================================================
+    const state = {
+      trendMetric: 'violent',
+      offenseMode: 'rate',
+      offenseCategory: 'all',
+      selectedCountyFips: '34027', // Morris County default
+      countySearch: '',
+      countyTier: 'all',
+      countySort: 'safest',
+      compareA: '34027',
+      compareB: '34013',
+      cityMode: 'both',
+      countyRegion: 'all',
+      countyMaxRate: 400,
+      demoDim: 'race',
+      demoMetric: 'rate',
+      cityYear: '2025',
+      citySearch: '',
+      cityCounty: 'all',
+      neighborMetric: 'violent',
+      watchlist: ['34019', '34027']
+    };
+
+    let trendChartInstance = null;
+    let offenseChartInstance = null;
+    let cityChartInstance = null;
+    let demoChartInstance = null;
+    let neighborChartInstance = null;
+
+    // =========================================================================
+    // 3. HELPERS
+    // =========================================================================
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function getCountyTier(rate) {
+      if (rate < 100) return { key: 'low', label: 'Low', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      if (rate <= 250) return { key: 'moderate', label: 'Moderate', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+      return { key: 'elevated', label: 'Elevated', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+    }
+
+    function setActiveTab(activeId, groupIds) {
+      groupIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (id === activeId) {
+          btn.classList.remove('tab-btn-inactive');
+          btn.classList.add('tab-btn-active');
+        } else {
+          btn.classList.remove('tab-btn-active');
+          btn.classList.add('tab-btn-inactive');
+        }
+      });
+    }
+
+    function downloadCSV(filename, rows) {
+      const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded ${filename}`);
+    }
+
+    // =========================================================================
+    // 4. RENDERERS
+    // =========================================================================
+    function renderTrendChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      const d = TREND_DATA[state.trendMetric];
+      document.getElementById('trend-insight-text').textContent = d.insight;
+
+      if (trendChartInstance) trendChartInstance.destroy();
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: d.years,
+          datasets: [
+            {
+              label: 'New Jersey',
+              data: d.nj,
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.12)',
+              borderWidth: 3,
+              pointRadius: 5,
+              pointBackgroundColor: '#2563eb',
+              fill: true,
+              tension: 0.25
+            },
+            {
+              label: 'United States Average',
+              data: d.us,
+              borderColor: '#64748b',
+              borderDash: [6, 4],
+              borderWidth: 2.5,
+              pointRadius: 4,
+              pointBackgroundColor: '#64748b',
+              fill: false,
+              tension: 0.25
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} per 100K`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Offenses per 100,000 Residents', font: { size: 11 } },
+              grid: { color: '#f1f5f9' }
+            },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderOffenseSection() {
+      const filtered = OFFENSES_2025.filter(o => state.offenseCategory === 'all' || o.category === state.offenseCategory);
+
+      // Table
+      const tbody = document.getElementById('offense-table-body');
+      tbody.innerHTML = filtered.map(o => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-2.5 pr-3 font-medium text-slate-900">
+            ${o.name}
+            <span class="ml-1.5 text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${o.category === 'violent' ? 'bg-indigo-50 text-indigo-700' : 'bg-sky-50 text-sky-700'}">${o.category}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right font-semibold text-slate-900">${o.njRate.toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right text-slate-500">${o.usRate.toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right text-slate-700">${o.count.toLocaleString()}</td>
+          <td class="py-2.5 pl-3 text-right font-semibold text-emerald-600">${o.yoy}%</td>
+        </tr>
+      `).join('');
+
+      // Chart
+      const ctx = document.getElementById('offenseChart').getContext('2d');
+      if (offenseChartInstance) offenseChartInstance.destroy();
+
+      const labels = filtered.map(o => o.name);
+      const datasets = state.offenseMode === 'rate'
+        ? [
+            { label: 'New Jersey (per 100K)', data: filtered.map(o => o.njRate), backgroundColor: '#2563eb', borderRadius: 4 },
+            { label: 'US Average (per 100K)', data: filtered.map(o => o.usRate), backgroundColor: '#cbd5e1', borderRadius: 4 }
+          ]
+        : [
+            { label: '2025 NJ Estimated Offenses', data: filtered.map(o => o.count), backgroundColor: '#0f172a', borderRadius: 4 }
+          ];
+
+      offenseChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderSelectedCountyCard() {
+      const c = COUNTIES.find(x => x.fips === state.selectedCountyFips) || COUNTIES[1];
+      const tier = getCountyTier(c.rate);
+      const diffPct = (((c.rate - 193.8) / 193.8) * 100).toFixed(1);
+      const diffSign = diffPct > 0 ? `+${diffPct}%` : `${diffPct}%`;
+
+      document.getElementById('sel-county-name').textContent = `${c.name} County`;
+      document.getElementById('sel-county-badge').textContent = `#${c.rank} of 21 · ${tier.label}`;
+      document.getElementById('sel-county-rate').textContent = c.rate.toFixed(1);
+      const vsEl = document.getElementById('sel-county-vs-nj');
+      vsEl.textContent = diffSign;
+      vsEl.className = `text-2xl font-extrabold mt-0.5 ${diffPct <= 0 ? 'text-emerald-300' : 'text-amber-300'}`;
+      const odds = c.rate > 0 ? Math.round(100000 / c.rate).toLocaleString() : 'N/A';
+      document.getElementById('sel-county-odds').textContent = `About 1 in ${odds} residents/yr`;
+      const pctPos = Math.min(98, Math.max(2, (c.rate / 400) * 100));
+      document.getElementById('marker-county').style.left = `${pctPos.toFixed(1)}%`;
+      const saferPct = Math.round(((21 - c.rank) / 20) * 100);
+      document.getElementById('sel-county-percentile').textContent = c.rank === 1 ? 'Safest County in NJ (#1)' : `Safer than ${saferPct}% of NJ counties`;
+      const isPinned = state.watchlist.includes(c.fips);
+      document.getElementById('pin-county-label').textContent = isPinned ? 'Saved in Watchlist' : 'Save to Watchlist';
+      const slug = c.name.toLowerCase().replace(/\s+/g, '-');
+      document.title = `${c.name} County Crime Statistics | NJ Crime Data Explorer`;
+      if (window.location.hash !== `#/county/${slug}` && window.location.hash.startsWith('#/county/')) {
+        history.replaceState(null, '', `#/county/${slug}`);
+      }
+
+      // Update map highlight if rendered
+      d3.selectAll('.county-path').classed('county-selected', function() {
+        return this.getAttribute('data-fips') === c.fips;
+      });
+    }
+
+    function renderCountyTable() {
+      const q = state.countySearch.trim().toLowerCase();
+      let list = COUNTIES.filter(c => {
+        const matchesName = c.name.toLowerCase().includes(q);
+        const tierKey = getCountyTier(c.rate).key;
+        const matchesTier = state.countyTier === 'all' || tierKey === state.countyTier;
+        const matchesRegion = state.countyRegion === 'all' || c.region === state.countyRegion;
+        const matchesRate = c.rate <= state.countyMaxRate;
+        return matchesName && matchesTier && matchesRegion && matchesRate;
+      });
+
+      if (state.countySort === 'safest') list.sort((a, b) => a.rate - b.rate);
+      else if (state.countySort === 'highest') list.sort((a, b) => b.rate - a.rate);
+      else list.sort((a, b) => a.name.localeCompare(b.name));
+
+      const tbody = document.getElementById('county-table-body');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 text-sm">No counties match your current filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(c => {
+        const tier = getCountyTier(c.rate);
+        const isSelected = c.fips === state.selectedCountyFips;
+        return `
+          <tr data-fips="${c.fips}" class="county-row cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/80' : 'hover:bg-slate-50'}">
+            <td class="py-2.5 px-4 font-semibold text-slate-500">#${c.rank}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-900">${c.name} County</td>
+            <td class="py-2.5 px-4 text-right font-mono font-semibold text-slate-800">${c.rate.toFixed(1)}</td>
+            <td class="py-2.5 px-4 text-right">
+              <span class="inline-block px-2 py-0.5 text-xs font-semibold rounded-full border ${tier.cls}">${tier.label}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.county-row').forEach(row => {
+        row.addEventListener('click', () => {
+          state.selectedCountyFips = row.getAttribute('data-fips');
+          renderSelectedCountyCard();
+          renderCountyTable();
+        });
+      });
+    }
+
+    function renderCountyComparison() {
+      const a = COUNTIES.find(c => c.fips === state.compareA) || COUNTIES[0];
+      const b = COUNTIES.find(c => c.fips === state.compareB) || COUNTIES[1];
+      const maxRate = Math.max(a.rate, b.rate, 193.8, 1);
+
+      const container = document.getElementById('compare-result');
+      const items = [
+        { label: `${a.name} County (#${a.rank})`, rate: a.rate, color: 'bg-blue-600' },
+        { label: `${b.name} County (#${b.rank})`, rate: b.rate, color: 'bg-indigo-500' },
+        { label: 'NJ 2025 Statewide Rate', rate: 193.8, color: 'bg-slate-500' }
+      ];
+
+      container.innerHTML = items.map(item => `
+        <div>
+          <div class="flex justify-between text-xs font-medium text-slate-700 mb-1">
+            <span>${item.label}</span>
+            <span class="font-bold">${item.rate.toFixed(1)} / 100K</span>
+          </div>
+          <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+            <div class="h-full ${item.color} rounded-full transition-all duration-300" style="width: ${Math.min(100, (item.rate / maxRate) * 100).toFixed(1)}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderCityChartAndTable() {
+      const tbody = document.getElementById('city-table-body');
+      const metricTabs = document.getElementById('city-metric-tabs');
+      const q = state.citySearch.trim().toLowerCase();
+      const countyMatch = c => state.cityCounty === 'all' || c.county === state.cityCounty;
+      const textMatch = c => c.name.toLowerCase().includes(q) || c.county.toLowerCase().includes(q);
+
+      if (state.cityYear === '2024') {
+        metricTabs.classList.add('hidden');
+        const filtered = CITIES_2024.filter(c => countyMatch(c) && textMatch(c));
+        tbody.innerHTML = filtered.length ? filtered.map(c => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 pr-3 font-semibold text-slate-900">${c.name}</td>
+            <td class="py-2.5 px-3 text-slate-600">${c.county}</td>
+            <td class="py-2.5 px-3 text-right text-slate-600">${c.pop.toLocaleString()}</td>
+            <td class="py-2.5 px-3 text-right font-semibold text-slate-900">${c.violent.toLocaleString()}</td>
+            <td class="py-2.5 px-3 text-right text-slate-400">—</td>
+            <td class="py-2.5 pl-3 text-right text-xs font-medium ${c.tier === 'Safest' ? 'text-emerald-700' : 'text-slate-600'}">${c.tier} (2024)</td>
+          </tr>
+        `).join('') : '<tr><td colspan="6" class="py-4 text-center text-slate-500">No municipalities in this dataset match that county/town filter.</td></tr>';
+
+        const ctx = document.getElementById('cityChart').getContext('2d');
+        if (cityChartInstance) cityChartInstance.destroy();
+        const chartRows = filtered.slice(0, 10);
+        cityChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: chartRows.map(c => c.name),
+            datasets: [{ label: '2024 Violent Crime / 100K', data: chartRows.map(c => c.violent), backgroundColor: chartRows.map(c => c.violent < 50 ? '#10b981' : '#dc2626'), borderRadius: 4 }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+            scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' } }, y: { grid: { display: false } } }
+          }
+        });
+        return;
+      }
+
+      metricTabs.classList.remove('hidden');
+      const filtered25 = CITIES_2025.filter(c => countyMatch(c) && textMatch(c));
+      tbody.innerHTML = filtered25.length ? filtered25.map(c => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 pr-3 font-semibold text-slate-900">${c.name}</td>
+          <td class="py-2.5 px-3 text-slate-600">${c.county}</td>
+          <td class="py-2.5 px-3 text-right text-slate-600">${c.pop.toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right font-semibold text-slate-900">${c.violent.toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right text-slate-700">${c.property.toLocaleString()}</td>
+          <td class="py-2.5 pl-3 text-right text-xs font-medium text-emerald-700">${c.coverage}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="6" class="py-4 text-center text-slate-500">No 2025 major cities in this county. Switch to "2024 Towns & Cities" for more towns.</td></tr>';
+
+      const ctx = document.getElementById('cityChart').getContext('2d');
+      if (cityChartInstance) cityChartInstance.destroy();
+
+      const datasets = [];
+      if (state.cityMode === 'both' || state.cityMode === 'violent') {
+        datasets.push({
+          label: 'Violent Crime / 100K',
+          data: filtered25.map(c => c.violent),
+          backgroundColor: '#dc2626',
+          borderRadius: 4
+        });
+      }
+      if (state.cityMode === 'both' || state.cityMode === 'property') {
+        datasets.push({
+          label: 'Property Crime / 100K',
+          data: filtered25.map(c => c.property),
+          backgroundColor: '#2563eb',
+          borderRadius: 4
+        });
+      }
+
+      cityChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: filtered25.map(c => c.name),
+          datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderDemoSection() {
+      const chartGrid = document.getElementById('demo-chart-grid');
+      const timePanel = document.getElementById('demo-time-panel');
+      const metricGroup = document.getElementById('demo-metric-group');
+
+      if (state.demoDim === 'time') {
+        chartGrid.classList.add('hidden');
+        timePanel.classList.remove('hidden');
+        metricGroup.classList.add('hidden');
+        return;
+      }
+
+      chartGrid.classList.remove('hidden');
+      timePanel.classList.add('hidden');
+      metricGroup.classList.remove('hidden');
+
+      const rows = DEMO_DATA[state.demoDim] || DEMO_DATA.race;
+      document.getElementById('demo-table-body').innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 pr-3 font-medium text-slate-900">${r.group}</td>
+          <td class="py-2.5 px-3 text-right font-semibold text-slate-900">${r.rate.toFixed(1)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-600">${r.share.toFixed(1)}%</td>
+          <td class="py-2.5 pl-3 text-right text-slate-700">${r.count.toLocaleString()}</td>
+        </tr>
+      `).join('');
+
+      const ctx = document.getElementById('demoChart').getContext('2d');
+      if (demoChartInstance) demoChartInstance.destroy();
+      const isRate = state.demoMetric === 'rate';
+      demoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rows.map(r => r.group),
+          datasets: [{
+            label: isRate ? 'Rate per 100,000 Residents' : 'Share of Victims (%)',
+            data: rows.map(r => isRate ? r.rate : r.share),
+            backgroundColor: isRate ? '#2563eb' : '#0f172a',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    async function initCountyMap() {
+      const loadingEl = document.getElementById('map-loading');
+      const svgEl = document.getElementById('nj-map-svg');
+      const tooltip = document.getElementById('map-tooltip');
+      const container = document.getElementById('nj-map-container');
+
+      try {
+        const res = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json');
+        if (!res.ok) throw new Error('Map data fetch failed');
+        const us = await res.json();
+
+        const allCounties = topojson.feature(us, us.objects.counties).features;
+        const njFeatures = allCounties.filter(f => String(f.id).padStart(5, '0').startsWith('34'));
+
+        const width = 360;
+        const height = 380;
+        const njCollection = { type: 'FeatureCollection', features: njFeatures };
+        const projection = d3.geoMercator().fitExtent([[14, 14], [width - 14, height - 14]], njCollection);
+        const path = d3.geoPath().projection(projection);
+
+        const colorScale = d3.scaleSequential()
+          .domain([23.7, 376.1])
+          .interpolator(d3.interpolateRgbBasis(['#dcfce7', '#86efac', '#fde047', '#fb923c', '#dc2626']));
+
+        const countyLookup = new Map(COUNTIES.map(c => [c.fips, c]));
+
+        loadingEl.classList.add('hidden');
+        svgEl.classList.remove('hidden');
+
+        const svg = d3.select(svgEl)
+          .attr('viewBox', `0 0 ${width} ${height}`);
+
+        svg.selectAll('path')
+          .data(njFeatures)
+          .enter()
+          .append('path')
+          .attr('d', path)
+          .attr('data-fips', d => String(d.id).padStart(5, '0'))
+          .attr('class', d => {
+            const fips = String(d.id).padStart(5, '0');
+            return `county-path ${fips === state.selectedCountyFips ? 'county-selected' : ''}`;
+          })
+          .attr('fill', d => {
+            const fips = String(d.id).padStart(5, '0');
+            const c = countyLookup.get(fips);
+            return c ? colorScale(c.rate) : '#e2e8f0';
+          })
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1)
+          .on('mousemove', function(event, d) {
+            const fips = String(d.id).padStart(5, '0');
+            const c = countyLookup.get(fips);
+            if (!c) return;
+            const rect = container.getBoundingClientRect();
+            tooltip.innerHTML = `<div class="font-bold">${c.name} County</div><div>Violent Rate: ${c.rate.toFixed(1)} / 100K (#${c.rank} safest)</div>`;
+            tooltip.style.left = `${Math.min(rect.width - 170, Math.max(8, event.clientX - rect.left + 12))}px`;
+            tooltip.style.top = `${Math.max(8, event.clientY - rect.top - 40)}px`;
+            tooltip.classList.remove('hidden');
+          })
+          .on('mouseleave', () => {
+            tooltip.classList.add('hidden');
+          })
+          .on('click', function(event, d) {
+            const fips = String(d.id).padStart(5, '0');
+            if (!countyLookup.has(fips)) return;
+            state.selectedCountyFips = fips;
+            renderSelectedCountyCard();
+            renderCountyTable();
+          });
+      } catch (err) {
+        loadingEl.innerHTML = `<span class="text-slate-500">Interactive vector map unavailable offline. Use the 21-county table and comparator on the right.</span>`;
+      }
+    }
+
+    // =========================================================================
+    // 5. INITIALIZATION & EVENT LISTENERS
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Optional live data.json loader (for GitHub Actions auto-update)
+      try {
+        const res = await fetch('./data.json', { cache: 'no-store' });
+        if (res.ok) {
+          const live = await res.json();
+          if (live.trends) Object.assign(TREND_DATA, live.trends);
+          if (Array.isArray(live.offenses) && live.offenses.length) {
+            OFFENSES_2025.splice(0, OFFENSES_2025.length, ...live.offenses);
+          }
+          if (Array.isArray(live.counties) && live.counties.length) {
+            COUNTIES.splice(0, COUNTIES.length, ...live.counties);
+          }
+        }
+      } catch (e) { /* Standalone fallback uses embedded verified data */ }
+
+      // Support deep-link hash #/county/<slug>
+      const hashMatch = window.location.hash.match(/^#\/county\/([a-z-]+)$/i);
+      if (hashMatch) {
+        const target = COUNTIES.find(c => c.name.toLowerCase().replace(/\s+/g, '-') === hashMatch[1].toLowerCase());
+        if (target) state.selectedCountyFips = target.fips;
+      }
+      if (window.lucide) lucide.createIcons();
+
+      // Mobile menu
+      document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.toggle('hidden');
+      });
+
+      // Trend toggles
+      const trendIds = ['trend-btn-violent', 'trend-btn-violent9', 'trend-btn-property', 'trend-btn-gun'];
+      [['violent', 'trend-btn-violent'], ['violent9', 'trend-btn-violent9'], ['property', 'trend-btn-property'], ['gun', 'trend-btn-gun']].forEach(([m, id]) => {
+        document.getElementById(id).addEventListener('click', () => {
+          state.trendMetric = m;
+          setActiveTab(id, trendIds);
+          renderTrendChart();
+        });
+      });
+
+      // Offense toggles
+      document.getElementById('offense-mode-rate').addEventListener('click', () => {
+        state.offenseMode = 'rate';
+        setActiveTab('offense-mode-rate', ['offense-mode-rate', 'offense-mode-count']);
+        renderOffenseSection();
+      });
+      document.getElementById('offense-mode-count').addEventListener('click', () => {
+        state.offenseMode = 'count';
+        setActiveTab('offense-mode-count', ['offense-mode-rate', 'offense-mode-count']);
+        renderOffenseSection();
+      });
+      ['all', 'violent', 'property'].forEach(cat => {
+        document.getElementById(`offense-cat-${cat}`).addEventListener('click', () => {
+          state.offenseCategory = cat;
+          setActiveTab(`offense-cat-${cat}`, ['offense-cat-all', 'offense-cat-violent', 'offense-cat-property']);
+          renderOffenseSection();
+        });
+      });
+
+      // County filters
+      document.getElementById('county-search').addEventListener('input', (e) => {
+        state.countySearch = e.target.value;
+        renderCountyTable();
+      });
+      document.getElementById('county-tier-filter').addEventListener('change', (e) => {
+        state.countyTier = e.target.value;
+        renderCountyTable();
+      });
+      document.getElementById('county-sort').addEventListener('change', (e) => {
+        state.countySort = e.target.value;
+        renderCountyTable();
+      });
+
+      // County comparator dropdowns
+      const sortedAlpha = [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name));
+      const selA = document.getElementById('compare-county-a');
+      const selB = document.getElementById('compare-county-b');
+      const optionsHtml = sortedAlpha.map(c => `<option value="${c.fips}">${c.name} County (${c.rate.toFixed(1)})</option>`).join('');
+      selA.innerHTML = optionsHtml;
+      selB.innerHTML = optionsHtml;
+      selA.value = state.compareA;
+      selB.value = state.compareB;
+      selA.addEventListener('change', (e) => { state.compareA = e.target.value; renderCountyComparison(); });
+      selB.addEventListener('change', (e) => { state.compareB = e.target.value; renderCountyComparison(); });
+
+      // City toggles
+      ['both', 'violent', 'property'].forEach(mode => {
+        document.getElementById(`city-btn-${mode}`).addEventListener('click', () => {
+          state.cityMode = mode;
+          setActiveTab(`city-btn-${mode}`, ['city-btn-both', 'city-btn-violent', 'city-btn-property']);
+          renderCityChartAndTable();
+        });
+      });
+
+      // CSV Exports
+      document.getElementById('export-state-csv-btn').addEventListener('click', () => {
+        const rows = [
+          ['Offense', 'Category', 'NJ 2025 Rate per 100K', 'US 2025 Rate per 100K', 'NJ 2025 Estimated Count', 'YoY Change vs 2024 (%)'],
+          ...OFFENSES_2025.map(o => [o.name, o.category, o.njRate, o.usRate, o.count, o.yoy])
+        ];
+        downloadCSV('nj_2025_crime_offenses.csv', rows);
+      });
+      document.getElementById('export-county-csv-btn').addEventListener('click', () => {
+        const rows = [
+          ['Safest Rank', 'FIPS', 'County', 'Violent Crime Rate per 100K (FBI CDE 2020-2024 Avg)', 'Tier'],
+          ...COUNTIES.map(c => [c.rank, c.fips, `${c.name} County`, c.rate, getCountyTier(c.rate).label])
+        ];
+        downloadCSV('nj_21_counties_violent_crime.csv', rows);
+      });
+
+      // Initial render
+      renderTrendChart();
+      renderOffenseSection();
+      renderSelectedCountyCard();
+      renderCountyTable();
+      renderCountyComparison();
+      renderCityChartAndTable();
+      // County region & max rate listeners
+      document.getElementById('county-region-filter').addEventListener('change', (e) => {
+        state.countyRegion = e.target.value;
+        document.getElementById('global-region-select').value = e.target.value;
+        renderCountyTable();
+      });
+      document.getElementById('county-max-rate').addEventListener('input', (e) => {
+        state.countyMaxRate = Number(e.target.value);
+        document.getElementById('county-max-rate-val').innerHTML = `&le; ${state.countyMaxRate} / 100K`;
+        renderCountyTable();
+      });
+
+      // Demographics listeners
+      ['race', 'age', 'sex', 'time'].forEach(dim => {
+        document.getElementById(`demo-dim-${dim}`).addEventListener('click', () => {
+          state.demoDim = dim;
+          document.getElementById('global-demo-select').value = dim;
+          setActiveTab(`demo-dim-${dim}`, ['demo-dim-race', 'demo-dim-age', 'demo-dim-sex', 'demo-dim-time']);
+          renderDemoSection();
+        });
+      });
+      ['rate', 'share'].forEach(m => {
+        document.getElementById(`demo-metric-${m}`).addEventListener('click', () => {
+          state.demoMetric = m;
+          setActiveTab(`demo-metric-${m}`, ['demo-metric-rate', 'demo-metric-share']);
+          renderDemoSection();
+        });
+      });
+
+      // Global Quick Filter Bar
+      const globalCountySel = document.getElementById('global-county-select');
+      globalCountySel.innerHTML = '<option value="">All 21 NJ Counties</option>' + sortedAlpha.map(c => `<option value="${c.fips}">${c.name} County</option>`).join('');
+      globalCountySel.addEventListener('change', (e) => {
+        if (!e.target.value) return;
+        state.selectedCountyFips = e.target.value;
+        renderSelectedCountyCard();
+        renderCountyTable();
+        document.getElementById('counties').scrollIntoView({ behavior: 'smooth' });
+      });
+      document.getElementById('global-region-select').addEventListener('change', (e) => {
+        state.countyRegion = e.target.value;
+        document.getElementById('county-region-filter').value = e.target.value;
+        renderCountyTable();
+        document.getElementById('counties').scrollIntoView({ behavior: 'smooth' });
+      });
+      document.getElementById('global-category-select').addEventListener('change', (e) => {
+        const cat = e.target.value;
+        state.offenseCategory = cat;
+        setActiveTab(`offense-cat-${cat}`, ['offense-cat-all', 'offense-cat-violent', 'offense-cat-property']);
+        renderOffenseSection();
+        if (cat === 'violent' || cat === 'property') {
+          state.trendMetric = cat;
+          setActiveTab(`trend-btn-${cat}`, ['trend-btn-violent', 'trend-btn-violent9', 'trend-btn-property', 'trend-btn-gun']);
+          renderTrendChart();
+        }
+      });
+      document.getElementById('global-demo-select').addEventListener('change', (e) => {
+        const dim = e.target.value;
+        state.demoDim = dim;
+        setActiveTab(`demo-dim-${dim}`, ['demo-dim-race', 'demo-dim-age', 'demo-dim-sex', 'demo-dim-time']);
+        renderDemoSection();
+        document.getElementById('demographics').scrollIntoView({ behavior: 'smooth' });
+      });
+      document.getElementById('global-reset-btn').addEventListener('click', () => {
+        state.countySearch = '';
+        state.countyTier = 'all';
+        state.countyRegion = 'all';
+        state.countySort = 'safest';
+        state.countyMaxRate = 400;
+        state.offenseCategory = 'all';
+        state.demoDim = 'race';
+        document.getElementById('county-search').value = '';
+        document.getElementById('county-tier-filter').value = 'all';
+        document.getElementById('county-region-filter').value = 'all';
+        document.getElementById('county-sort').value = 'safest';
+        document.getElementById('county-max-rate').value = '400';
+        document.getElementById('county-max-rate-val').innerHTML = '&le; 400 / 100K';
+        document.getElementById('global-county-select').value = '';
+        document.getElementById('global-region-select').value = 'all';
+        document.getElementById('global-category-select').value = 'all';
+        document.getElementById('global-demo-select').value = 'race';
+        setActiveTab('offense-cat-all', ['offense-cat-all', 'offense-cat-violent', 'offense-cat-property']);
+        setActiveTab('demo-dim-race', ['demo-dim-race', 'demo-dim-age', 'demo-dim-sex', 'demo-dim-time']);
+        renderOffenseSection();
+        renderCountyTable();
+        renderDemoSection();
+        showToast('All filters reset');
+      });
+
+      // Print & Copy Summary
+      document.getElementById('print-report-btn').addEventListener('click', () => window.print());
+      document.getElementById('copy-county-btn').addEventListener('click', () => {
+        const c = COUNTIES.find(x => x.fips === state.selectedCountyFips) || COUNTIES[1];
+        const diffPct = (((c.rate - 193.8) / 193.8) * 100).toFixed(1);
+        const text = `${c.name} County, NJ — Violent Crime Rate: ${c.rate.toFixed(1)} per 100,000 (#${c.rank} safest of 21 NJ counties; ${diffPct}% vs. NJ 2025 rate of 193.8 per 100K).`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast('County summary copied!')).catch(() => showToast(text));
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast('County summary copied!');
+        }
+      });
+
+      // Quick Answer Presets
+      document.getElementById('preset-safest').addEventListener('click', () => {
+        state.countySort = 'safest';
+        state.countyTier = 'low';
+        state.selectedCountyFips = '34019';
+        document.getElementById('county-sort').value = 'safest';
+        document.getElementById('county-tier-filter').value = 'low';
+        renderSelectedCountyCard();
+        renderCountyTable();
+        document.getElementById('counties').scrollIntoView({ behavior: 'smooth' });
+      });
+      document.getElementById('preset-dropping').addEventListener('click', () => {
+        state.trendMetric = 'violent';
+        setActiveTab('trend-btn-violent', ['trend-btn-violent', 'trend-btn-violent9', 'trend-btn-property', 'trend-btn-gun']);
+        renderTrendChart();
+        document.getElementById('overview').scrollIntoView({ behavior: 'smooth' });
+      });
+      document.getElementById('preset-north-south').addEventListener('click', () => {
+        state.compareA = '34003'; // Bergen
+        state.compareB = '34007'; // Camden
+        document.getElementById('compare-county-a').value = '34003';
+        document.getElementById('compare-county-b').value = '34007';
+        renderCountyComparison();
+        document.getElementById('compare-result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      // City 2025 vs 2024 toggle & search
+      document.getElementById('city-year-2025').addEventListener('click', () => {
+        state.cityYear = '2025';
+        setActiveTab('city-year-2025', ['city-year-2025', 'city-year-2024']);
+        renderCityChartAndTable();
+      });
+      document.getElementById('city-year-2024').addEventListener('click', () => {
+        state.cityYear = '2024';
+        setActiveTab('city-year-2024', ['city-year-2025', 'city-year-2024']);
+        renderCityChartAndTable();
+      });
+      document.getElementById('city-search').addEventListener('input', (e) => {
+        state.citySearch = e.target.value;
+        renderCityChartAndTable();
+      });
+
+      // Populate & wire city-county-filter
+      const cityCountySel = document.getElementById('city-county-filter');
+      const allCityCounties = [...new Set([...CITIES_2025, ...CITIES_2024].map(c => c.county))].sort();
+      cityCountySel.innerHTML = '<option value="all">All Counties</option>' + allCityCounties.map(cnty => `<option value="${cnty}">${cnty} County</option>`).join('');
+      cityCountySel.addEventListener('change', (e) => {
+        state.cityCounty = e.target.value;
+        renderCityChartAndTable();
+      });
+
+      // View Towns in Selected County button
+      document.getElementById('view-county-towns-btn').addEventListener('click', () => {
+        const c = COUNTIES.find(x => x.fips === state.selectedCountyFips) || COUNTIES[1];
+        state.cityYear = '2024';
+        setActiveTab('city-year-2024', ['city-year-2025', 'city-year-2024']);
+        if (allCityCounties.includes(c.name)) {
+          state.cityCounty = c.name;
+          cityCountySel.value = c.name;
+        } else {
+          state.cityCounty = 'all';
+          cityCountySel.value = 'all';
+          showToast(`No individual towns listed for ${c.name} County; showing all towns`);
+        }
+        renderCityChartAndTable();
+        document.getElementById('cities').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // FAQ Accordion
+      document.querySelectorAll('.faq-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const body = btn.nextElementSibling;
+          body.classList.toggle('hidden');
+        });
+      });
+
+      // Dark / Light Theme Toggle
+      try {
+        if (localStorage.getItem('nj_crime_theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+      document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        try { localStorage.setItem('nj_crime_theme', isDark ? 'dark' : 'light'); } catch (e) {}
+      });
+
+      // Export JSON
+      document.getElementById('export-json-btn').addEventListener('click', () => {
+        const payload = {
+          statewide_2025: { population: 9548215, violent_rate_100k: 193.8, property_rate_100k: 1249.6, offenses: OFFENSES_2025 },
+          trends_2021_2025: TREND_DATA,
+          counties_2020_2024_avg: COUNTIES,
+          cities_2025: CITIES_2025
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'nj_crime_explorer_data.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Exported nj_crime_explorer_data.json');
+      });
+
+      // Safety Matchmaker
+      function renderMatchmaker() {
+        const reg = document.getElementById('mm-region').value;
+        const maxR = Number(document.getElementById('mm-max-rate').value);
+        document.getElementById('mm-rate-label').innerHTML = `&le; ${maxR} / 100K`;
+        const matches = COUNTIES.filter(c => (reg === 'all' || c.region === reg) && c.rate <= maxR).sort((a, b) => a.rate - b.rate);
+        const box = document.getElementById('mm-results');
+        if (!matches.length) {
+          box.innerHTML = '<div class="col-span-2 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">No counties match that region and rate threshold. Try raising the slider.</div>';
+          return;
+        }
+        box.innerHTML = matches.map(c => `
+          <button type="button" data-mm-fips="${c.fips}" class="mm-pick text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-900">${c.name} County</span>
+              <span class="text-xs font-semibold text-emerald-700">#${c.rank}</span>
+            </div>
+            <div class="text-xs text-slate-600 mt-1">${c.region} NJ · <strong>${c.rate.toFixed(1)}</strong> / 100K</div>
+          </button>
+        `).join('');
+        document.querySelectorAll('.mm-pick').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.selectedCountyFips = btn.getAttribute('data-mm-fips');
+            renderSelectedCountyCard();
+            renderCountyTable();
+            document.getElementById('counties').scrollIntoView({ behavior: 'smooth' });
+          });
+        });
+      }
+      document.getElementById('mm-region').addEventListener('change', renderMatchmaker);
+      document.getElementById('mm-max-rate').addEventListener('input', renderMatchmaker);
+      renderMatchmaker();
+
+      // What-If Benchmark Simulator
+      function renderWhatIf() {
+        const key = document.getElementById('whatif-benchmark').value;
+        const rates = { us: 327.6, top5: 43.3, hunterdon: 23.7, nj2023: 225.3 };
+        const targetRate = rates[key];
+        const projected = Math.round((targetRate / 100000) * 9548215);
+        const diff = projected - 18508;
+        const absDiff = Math.abs(diff).toLocaleString();
+        const badge = diff > 0
+          ? `<span class="text-rose-300 font-bold">+${absDiff} MORE violent crimes/year</span>`
+          : `<span class="text-emerald-300 font-bold">${absDiff} FEWER violent crimes/year</span>`;
+        document.getElementById('whatif-output').innerHTML = `Projected statewide total: <strong>${projected.toLocaleString()}</strong> violent offenses (${badge} vs. NJ's actual 18,508 in 2025).`;
+      }
+      document.getElementById('whatif-benchmark').addEventListener('change', renderWhatIf);
+      renderWhatIf();
+
+      // 3-Question Quiz
+      const QUIZ = [
+        { q: "1. How does NJ's 2025 violent crime rate compare to the U.S. average?", opts: ['40.8% lower', '15% higher'], ans: 0, exp: 'NJ was 193.8 vs. the U.S. rate of 327.6 per 100K.' },
+        { q: '2. Which NJ county has the lowest violent crime rate?', opts: ['Hunterdon', 'Bergen'], ans: 0, exp: 'Hunterdon ranks #1 at 23.7 violent crimes per 100K.' },
+        { q: '3. Did NJ violent crime rise or fall from 2024 to 2025?', opts: ['Rose 5%', 'Fell 11.8%'], ans: 1, exp: 'NJ violent crime fell 11.8% from 219.7 to 193.8 per 100K.' }
+      ];
+      const quizAnswers = {};
+      function renderQuiz() {
+        const score = Object.keys(quizAnswers).filter(k => quizAnswers[k] === QUIZ[k].ans).length;
+        document.getElementById('quiz-score').textContent = `Score: ${score} / 3`;
+        document.getElementById('quiz-container').innerHTML = QUIZ.map((item, idx) => {
+          const picked = quizAnswers[idx];
+          const answered = picked !== undefined;
+          return `
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+              <div class="text-xs font-bold text-slate-900 mb-3">${item.q}</div>
+              <div class="flex gap-2 mb-2">
+                ${item.opts.map((opt, oi) => {
+                  let cls = 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100';
+                  if (answered && oi === item.ans) cls = 'bg-emerald-600 border-emerald-600 text-white';
+                  else if (answered && oi === picked) cls = 'bg-rose-600 border-rose-600 text-white';
+                  return `<button type="button" data-q="${idx}" data-o="${oi}" class="quiz-opt flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${cls}">${opt}</button>`;
+                }).join('')}
+              </div>
+              <div class="text-[11px] ${answered ? 'text-slate-600' : 'text-transparent'}">${answered ? item.exp : 'Placeholder'}</div>
+            </div>
+          `;
+        }).join('');
+        document.querySelectorAll('.quiz-opt').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const qIdx = Number(btn.getAttribute('data-q'));
+            const oIdx = Number(btn.getAttribute('data-o'));
+            quizAnswers[qIdx] = oIdx;
+            renderQuiz();
+          });
+        });
+      }
+      renderQuiz();
+
+      // Watchlist (persisted in try/catch localStorage)
+      try {
+        const saved = JSON.parse(localStorage.getItem('nj_crime_watchlist') || 'null');
+        if (Array.isArray(saved)) state.watchlist = saved;
+      } catch (e) {}
+
+      function saveWatchlist() {
+        try { localStorage.setItem('nj_crime_watchlist', JSON.stringify(state.watchlist)); } catch (e) {}
+      }
+
+      function renderWatchlist() {
+        const box = document.getElementById('watchlist-chips');
+        if (!state.watchlist.length) {
+          box.innerHTML = '<span>No counties saved yet. Select any county and click "Save to Watchlist".</span>';
+          return;
+        }
+        box.innerHTML = state.watchlist.map(fips => {
+          const c = COUNTIES.find(x => x.fips === fips);
+          if (!c) return '';
+          return `
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-blue-200 text-slate-800 font-semibold shadow-sm">
+              <button type="button" data-wl-jump="${c.fips}" class="wl-jump hover:text-blue-600">${c.name} (#${c.rank} · ${c.rate.toFixed(1)})</button>
+              <button type="button" data-wl-del="${c.fips}" aria-label="Remove ${c.name}" class="wl-del text-slate-400 hover:text-rose-600">&times;</button>
+            </span>
+          `;
+        }).join('');
+        document.querySelectorAll('.wl-jump').forEach(b => b.addEventListener('click', () => {
+          state.selectedCountyFips = b.getAttribute('data-wl-jump');
+          renderSelectedCountyCard();
+          renderCountyTable();
+        }));
+        document.querySelectorAll('.wl-del').forEach(b => b.addEventListener('click', () => {
+          const f = b.getAttribute('data-wl-del');
+          state.watchlist = state.watchlist.filter(x => x !== f);
+          saveWatchlist();
+          renderWatchlist();
+          renderSelectedCountyCard();
+        }));
+      }
+
+      document.getElementById('pin-county-btn').addEventListener('click', () => {
+        const f = state.selectedCountyFips;
+        if (state.watchlist.includes(f)) {
+          state.watchlist = state.watchlist.filter(x => x !== f);
+          showToast('Removed from watchlist');
+        } else {
+          state.watchlist.push(f);
+          showToast('Saved to watchlist');
+        }
+        saveWatchlist();
+        renderWatchlist();
+        renderSelectedCountyCard();
+      });
+      document.getElementById('clear-watchlist-btn').addEventListener('click', () => {
+        state.watchlist = [];
+        saveWatchlist();
+        renderWatchlist();
+        renderSelectedCountyCard();
+      });
+      renderWatchlist();
+      renderSelectedCountyCard();
+
+      // Tri-State & Mid-Atlantic Neighbors
+      function renderNeighborSection() {
+        const isV = state.neighborMetric === 'violent';
+        const sorted = [...NEIGHBORS_2024].sort((a, b) => (isV ? a.violent - b.violent : a.property - b.property));
+        document.getElementById('neighbor-table-body').innerHTML = sorted.map(n => {
+          const diffUs = (((n.violent - 359.1) / 359.1) * 100).toFixed(1);
+          const diffStr = n.state === 'U.S. Average' ? 'Baseline' : (diffUs > 0 ? `+${diffUs}%` : `${diffUs}%`);
+          return `
+            <tr class="${n.highlight ? 'bg-blue-50/80 font-semibold' : 'hover:bg-slate-50'}">
+              <td class="py-2.5 pr-3 text-slate-900">${n.state}${n.highlight ? ' <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-600 text-white ml-1">NJ</span>' : ''}</td>
+              <td class="py-2.5 px-3 text-right text-slate-900">${n.violent.toFixed(1)}</td>
+              <td class="py-2.5 px-3 text-right text-slate-700">${n.property.toLocaleString()}</td>
+              <td class="py-2.5 pl-3 text-right ${Number(diffUs) < 0 ? 'text-emerald-600 font-semibold' : 'text-slate-600'}">${diffStr}</td>
+            </tr>
+          `;
+        }).join('');
+
+        const ctx = document.getElementById('neighborChart').getContext('2d');
+        if (neighborChartInstance) neighborChartInstance.destroy();
+        neighborChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: sorted.map(n => n.state),
+            datasets: [{
+              label: isV ? '2024 Violent Crime / 100K' : '2024 Property Crime / 100K',
+              data: sorted.map(n => isV ? n.violent : n.property),
+              backgroundColor: sorted.map(n => n.highlight ? '#2563eb' : (n.state === 'U.S. Average' ? '#64748b' : '#cbd5e1')),
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+            scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' } }, y: { grid: { display: false } } }
+          }
+        });
+      }
+      document.getElementById('neighbor-btn-violent').addEventListener('click', () => {
+        state.neighborMetric = 'violent';
+        setActiveTab('neighbor-btn-violent', ['neighbor-btn-violent', 'neighbor-btn-property']);
+        renderNeighborSection();
+      });
+      document.getElementById('neighbor-btn-property').addEventListener('click', () => {
+        state.neighborMetric = 'property';
+        setActiveTab('neighbor-btn-property', ['neighbor-btn-violent', 'neighbor-btn-property']);
+        renderNeighborSection();
+      });
+      renderNeighborSection();
+
+      // Privacy & Terms modal
+      const pModal = document.getElementById('privacy-modal');
+      document.getElementById('open-privacy-btn').addEventListener('click', () => pModal.classList.remove('hidden'));
+      document.getElementById('close-privacy-btn').addEventListener('click', () => pModal.classList.add('hidden'));
+      pModal.addEventListener('click', (e) => { if (e.target === pModal) pModal.classList.add('hidden'); });
+
+      renderDemoSection();
+      initCountyMap();
+    });
+  </script>
+</body>
+</html>
